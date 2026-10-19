@@ -1,18 +1,14 @@
+/**
+ * Nex Guard Product Redesign — Apple Health / Oura / Linear / WHOOP Inspired
+ * Minimalist, typography-driven, zero AI-generated clutter, clean space utilization.
+ */
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { api } from './api';
-import { useAlertStore, useAuthStore, useDeviceStore } from './store';
+
+import { theme } from './theme';
 import { EventPayload, RootStackParamList } from './types';
+import { useAlertStore, useAuthStore, useDeviceStore } from './store';
 
 import { AuthService } from './services/AuthService';
 import { ProfileService } from './services/ProfileService';
@@ -20,103 +16,20 @@ import { DeviceService } from './services/DeviceService';
 import { AlertService } from './services/AlertService';
 import { FallDetectionService, FallStateMachineState } from './services/FallDetectionService';
 
+import {
+  Button,
+  CompactDeviceStatus,
+  DiagnosticRow,
+  Header,
+  Input,
+  LargeSafeStatus,
+  Screen,
+  TimelineItem,
+} from './components/UIComponents';
+
 type Props<Route extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, Route>;
 
-const colors = {
-  paper: '#f4f1eb',
-  ink: '#171717',
-  muted: '#6e6a62',
-  line: '#c9c4bb',
-  green: '#39745a',
-  red: '#bd473c',
-  blue: '#3d6376',
-};
-
-function Shell({ children, eyebrow = 'NEX GUARD / CARE' }: { children: React.ReactNode; eyebrow?: string }) {
-  return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.eyebrow}>{eyebrow}</Text>
-        {children}
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function Button({
-  label,
-  onPress,
-  secondary = false,
-  loading = false,
-}: {
-  label: string;
-  onPress: () => void;
-  secondary?: boolean;
-  loading?: boolean;
-}) {
-  return (
-    <Pressable
-      style={[styles.button, secondary && styles.buttonSecondary]}
-      onPress={onPress}
-      disabled={loading}
-    >
-      {loading ? (
-        <ActivityIndicator color={secondary ? colors.ink : colors.paper} />
-      ) : (
-        <Text style={[styles.buttonText, secondary && styles.buttonTextSecondary]}>{label}</Text>
-      )}
-    </Pressable>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry = false,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  secureTextEntry?: boolean;
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#9b968d"
-        secureTextEntry={secureTextEntry}
-        style={styles.input}
-        autoCapitalize="none"
-      />
-    </View>
-  );
-}
-
-function SectionTitle({ index, title, copy }: { index: string; title: string; copy?: string }) {
-  return (
-    <View style={styles.sectionTitle}>
-      <Text style={styles.sectionIndex}>{index}</Text>
-      <Text style={styles.heading}>{title}</Text>
-      {copy && <Text style={styles.copy}>{copy}</Text>}
-    </View>
-  );
-}
-
-function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable style={styles.linkRow} onPress={onPress}>
-      <Text style={styles.linkLabel}>{label}</Text>
-      <Text style={styles.arrow}>→</Text>
-    </Pressable>
-  );
-}
-
+// 1. LOGIN SCREEN
 export function LoginScreen({ navigation }: Props<'Login'>) {
   const [email, setEmail] = useState('caregiver@example.com');
   const [password, setPassword] = useState('password123');
@@ -139,23 +52,46 @@ export function LoginScreen({ navigation }: Props<'Login'>) {
   };
 
   return (
-    <Shell eyebrow="NEX GUARD / ACCESS">
-      <View style={styles.authSpace}>
-        <Text style={styles.kicker}>CAREGIVER CONSOLE (LOCAL ACCOUNT)</Text>
-        <Text style={styles.hero}>Stay close.{'\n'}Respond faster.</Text>
-        <Text style={styles.copy}>A quiet local command center for the people who care for someone else.</Text>
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        <View style={styles.form}>
-          <Field label="EMAIL ADDRESS" value={email} onChangeText={setEmail} placeholder="caregiver@example.com" />
-          <Field label="PASSWORD" value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
-          <Button label="ENTER CONSOLE" onPress={handleLogin} loading={loading} />
-          <Button label="CREATE A CARE PLAN" secondary onPress={() => navigation.navigate('Register')} />
+    <Screen>
+      <View style={styles.authContainer}>
+        <View style={styles.authHeader}>
+          <Text style={styles.authBrand}>NEX GUARD</Text>
+          <Text style={styles.authTitle}>Caregiver Access</Text>
+          <Text style={styles.authSubtitle}>Personal safety & emergency monitoring</Text>
         </View>
+
+        <View style={styles.formSpace}>
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="caregiver@example.com"
+            error={error}
+          />
+          <Input
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="Password"
+            secureTextEntry
+          />
+
+          <Button label="Sign In" onPress={handleLogin} loading={loading} style={{ marginTop: theme.spacing.md }} />
+          <Button
+            label="Create New Account"
+            variant="secondary"
+            onPress={() => navigation.navigate('Register')}
+            style={{ marginTop: theme.spacing.sm }}
+          />
+        </View>
+
+        <Text style={styles.authFooter}>Standalone Local Account · Data stays on your device</Text>
       </View>
-    </Shell>
+    </Screen>
   );
 }
 
+// 2. REGISTER SCREEN
 export function RegisterScreen({ navigation }: Props<'Register'>) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -179,24 +115,38 @@ export function RegisterScreen({ navigation }: Props<'Register'>) {
   };
 
   return (
-    <Shell eyebrow="NEX GUARD / NEW CAREGIVER">
-      <View style={styles.authSpace}>
-        <Text style={styles.kicker}>BEGIN WITH CONTEXT</Text>
-        <Text style={styles.hero}>Build a safer{'\n'}daily rhythm.</Text>
-        <Text style={styles.copy}>Set up a local caregiver device account. Data stays on your device.</Text>
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        <View style={styles.form}>
-          <Field label="YOUR NAME" value={name} onChangeText={setName} placeholder="Caregiver name" />
-          <Field label="EMAIL" value={email} onChangeText={setEmail} placeholder="you@example.com" />
-          <Field label="PASSWORD" value={password} onChangeText={setPassword} placeholder="Choose password (min 6 chars)" secureTextEntry />
-          <Button label="START SETUP" onPress={handleRegister} loading={loading} />
-          <Button label="BACK TO ACCESS" secondary onPress={() => navigation.goBack()} />
-        </View>
+    <Screen>
+      <Header title="Create Account" subtitle="Set up your caregiver console" onBack={() => navigation.goBack()} />
+
+      <View style={styles.formSpace}>
+        <Input
+          label="Your Name"
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Anshuman"
+          error={error}
+        />
+        <Input
+          label="Email Address"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+        />
+        <Input
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Minimum 6 characters"
+          secureTextEntry
+        />
+
+        <Button label="Create Account" onPress={handleRegister} loading={loading} style={{ marginTop: theme.spacing.md }} />
       </View>
-    </Shell>
+    </Screen>
   );
 }
 
+// 3. ONBOARDING SCREEN
 export function OnboardingScreen() {
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
@@ -206,7 +156,7 @@ export function OnboardingScreen() {
   const completeProfile = useAuthStore((state) => state.completeProfile);
 
   const handleSave = async () => {
-    const elderlyName = name.trim() || 'Family member';
+    const elderlyName = name.trim() || 'Buddha 2';
     setLoading(true);
     try {
       await ProfileService.createProfile({
@@ -223,17 +173,30 @@ export function OnboardingScreen() {
   };
 
   return (
-    <Shell eyebrow="NEX GUARD / 01 PROFILE">
-      <View style={styles.setupSpace}>
-        <SectionTitle index="01 / PERSON" title="Who are we watching over?" copy="Stored locally in device SQLite database." />
-        <Field label="NAME" value={name} onChangeText={setName} placeholder="Elderly person name" />
-        <Field label="RELATIONSHIP" value={relationship} onChangeText={setRelationship} placeholder="Parent, partner, relative" />
-        <Button label="SAVE CARE PLAN" onPress={handleSave} loading={loading} />
+    <Screen>
+      <Header title="Care Recipient" subtitle="Who are you watching over?" />
+
+      <View style={styles.formSpace}>
+        <Input
+          label="Recipient Name"
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Buddha 2"
+        />
+        <Input
+          label="Relationship / Notes"
+          value={relationship}
+          onChangeText={setRelationship}
+          placeholder="e.g. Parent"
+        />
+
+        <Button label="Save Care Plan" onPress={handleSave} loading={loading} style={{ marginTop: theme.spacing.md }} />
       </View>
-    </Shell>
+    </Screen>
   );
 }
 
+// 4. DEVICE SETUP SCREEN
 export function DeviceSetupScreen() {
   const [deviceId, setDeviceId] = useState('nex-guard-001');
   const [loading, setLoading] = useState(false);
@@ -253,21 +216,27 @@ export function DeviceSetupScreen() {
   };
 
   return (
-    <Shell eyebrow="NEX GUARD / 02 DEVICE">
-      <View style={styles.setupSpace}>
-        <SectionTitle index="02 / PAIR" title="Connect the wearable." copy="Use the device ID printed on the inside of the enclosure." />
-        <Field label="DEVICE ID" value={deviceId} onChangeText={setDeviceId} placeholder="nex-guard-001" />
-        <View style={styles.diagram}>
-          <Text style={styles.diagramCode}>WEARABLE / REGISTERED (LOCAL)</Text>
-          <Text style={styles.diagramTitle}>ESP32-S3</Text>
-          <Text style={styles.diagramCopy}>IMU · GNSS · LOCAL SQLITE STORAGE</Text>
-        </View>
-        <Button label="PAIR DEVICE LOCALLY" onPress={handlePair} loading={loading} />
+    <Screen>
+      <Header title="Connect Device" subtitle="Set up wearable monitoring" />
+
+      <View style={styles.formSpace}>
+        <Input
+          label="Device ID"
+          value={deviceId}
+          onChangeText={setDeviceId}
+          placeholder="nex-guard-001"
+        />
+
+        <DiagnosticRow label="Model" value="ESP32-S3 Wearable" />
+        <DiagnosticRow label="Operational Mode" value="Standalone Local Mode" />
+
+        <Button label="Complete Setup" onPress={handlePair} loading={loading} style={{ marginTop: theme.spacing.xl }} />
       </View>
-    </Shell>
+    </Screen>
   );
 }
 
+// 5. DASHBOARD SCREEN (CAREGIVER COMMAND CENTER)
 export function DashboardScreen({ navigation }: Props<'Dashboard'>) {
   const caregiverName = useAuthStore((state) => state.caregiverName);
   const elderlyName = useAuthStore((state) => state.elderlyName);
@@ -276,7 +245,6 @@ export function DashboardScreen({ navigation }: Props<'Dashboard'>) {
   const deviceId = useDeviceStore((state) => state.deviceId);
 
   const [loading, setLoading] = useState(false);
-  const [simulating, setSimulating] = useState(false);
 
   const loadLocalAlerts = async () => {
     setLoading(true);
@@ -305,66 +273,55 @@ export function DashboardScreen({ navigation }: Props<'Dashboard'>) {
     void loadLocalAlerts();
   }, []);
 
-  const handleSimulateFall = async () => {
-    setSimulating(true);
-    try {
-      void FallDetectionService.triggerSimulatedFall(deviceId || 'nex-guard-001');
-      navigation.navigate('Emergency');
-    } catch (e) {
-      console.warn('[SIMULATION ERROR]', e);
-    } finally {
-      setSimulating(false);
-      void loadLocalAlerts();
-    }
-  };
+  const recipientDisplayName = elderlyName || 'Buddha 2';
 
   return (
-    <Shell>
-      <View style={styles.dashboardHeader}>
-        <View>
-          <Text style={styles.kicker}>GOOD MORNING, {caregiverName.toUpperCase() || 'CAREGIVER'}</Text>
-          <Text style={styles.dashboardTitle}>Care, with a{'\n'}clear signal.</Text>
-        </View>
-        <Pressable onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.menuDot}>•••</Text>
-        </Pressable>
+    <Screen
+      activeTab="HOME"
+      onTabChange={(tab) => {
+        if (tab === 'ALERTS') navigation.navigate('History');
+        if (tab === 'DEVICE') navigation.navigate('DeviceHealth');
+        if (tab === 'PROFILE') navigation.navigate('Profile');
+      }}
+    >
+      {/* HEADER & CONTEXT */}
+      <View style={styles.topBar}>
+        <Text style={theme.typography.eyebrow}>NEX GUARD / LOCAL MODE</Text>
+        <Text style={styles.greetingText}>Good morning, {caregiverName || 'Anshuman'}</Text>
       </View>
-      <View style={styles.watchCard}>
-        <View>
-          <Text style={styles.cardLabel}>CURRENTLY WATCHING (LOCAL DEVICE)</Text>
-          <Text style={styles.cardName}>{elderlyName || 'Family member'}</Text>
-          <Text style={styles.cardMeta}>
-            STANDALONE LOCAL MODE · {deviceId}
-          </Text>
-        </View>
-        <View style={[styles.signal, styles.signalLive]} />
+
+      {/* LARGE SAFE STATUS (Typography + Whitespace Driven) */}
+      <LargeSafeStatus recipientName={recipientDisplayName} lastCheckText="Just now" />
+
+      {/* RECENT ACTIVITY TIMELINE */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitleText}>Recent Activity</Text>
       </View>
-      <View style={styles.metrics}>
-        <View style={styles.metric}>
-          <Text style={styles.metricValue}>{history.length}</Text>
-          <Text style={styles.metricLabel}>ALERTS LOGGED</Text>
-        </View>
-        <View style={styles.metric}>
-          <Text style={styles.metricValue}>LOCAL</Text>
-          <Text style={styles.metricLabel}>DEVICE STATUS</Text>
-        </View>
-      </View>
+
       {loading ? (
-        <ActivityIndicator color={colors.ink} style={{ marginVertical: 12 }} />
+        <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: theme.spacing.md }} />
       ) : (
-        <LinkRow label="VIEW ALERT HISTORY" onPress={() => navigation.navigate('History')} />
+        <View style={styles.timelineBox}>
+          <TimelineItem title="Monitoring active" time="Just now" status="safe" />
+          <TimelineItem title={`Device registered (${deviceId || 'NEX GUARD 001'})`} time="Today" status="safe" />
+          {history.slice(0, 3).map((item) => (
+            <TimelineItem
+              key={item.id}
+              title={item.event_type === 'FALL_DETECTED' ? 'Fall detected' : 'System check'}
+              time={new Date(item.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              status={item.event_type === 'FALL_DETECTED' ? 'warning' : 'safe'}
+            />
+          ))}
+        </View>
       )}
-      <LinkRow label="TEST SCENARIO CENTER" onPress={() => navigation.navigate('ScenarioCenter')} />
-      <LinkRow label="DEVICE HEALTH" onPress={() => navigation.navigate('DeviceHealth')} />
-      <LinkRow label="CAREGIVER SETTINGS" onPress={() => navigation.navigate('Profile')} />
-      <View style={{ marginTop: 16 }}>
-        <Button label="TRIGGER LOCAL FALL SIMULATION" secondary onPress={handleSimulateFall} loading={simulating} />
-      </View>
-      <Text style={styles.dashboardFooter}>Standalone offline mode: All records persisted in SQLite.</Text>
-    </Shell>
+
+      {/* COMPACT DEVICE STATUS */}
+      <CompactDeviceStatus deviceId={deviceId || 'NEX GUARD 001'} mode="Simulation Mode" />
+    </Screen>
   );
 }
 
+// 6. EMERGENCY SCREEN (HIGH-PRIORITY TAKEOVER DESIGN)
 export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
   const event = useAlertStore((state) => state.currentAlert);
   const activeAlertId = useAlertStore((state) => state.activeAlertId);
@@ -448,71 +405,58 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
 
   const isConfirmationWindow = engineState === 'USER_CONFIRMATION' || engineState === 'POSSIBLE_FALL';
 
-  const statusText = isConfirmationWindow
-    ? `Possible fall detected! Safety check active.`
-    : alertStatus === 'ACKNOWLEDGED'
-    ? 'Event acknowledged. User check-in active.'
-    : alertStatus === 'RESOLVED'
-    ? 'Event resolved safely.'
-    : 'Immediate attention required.';
-
   return (
-    <Shell eyebrow="NEX GUARD / PRIORITY EVENT">
-      <View style={styles.emergency}>
-        <Text style={styles.alertCode}>🚨 FALL_DETECTED (LOCAL SIMULATION)</Text>
-        <Text style={styles.emergencyTitle}>{statusText}</Text>
-        <Text style={styles.copy}>
-          {isConfirmationWindow
-            ? `Wearable simulation detected sudden impact. Please verify safety within ${countdown} seconds.`
-            : event
-            ? `Device ${event.device_id} reported a fall at ${new Date(event.occurred_at).toLocaleTimeString()}.`
-            : 'A fall event has been logged locally on this device.'}
-        </Text>
+    <Screen style={styles.emergencyContainer}>
+      <Text style={theme.typography.eyebrow}>NEX GUARD / PRIORITY TAKEOVER</Text>
 
-        <View style={styles.emergencyData}>
-          <DataRow label="SOURCE" value="LOCAL SIMULATION" />
-          <DataRow label="STATE MACHINE" value={engineState} />
-          {isConfirmationWindow && <DataRow label="COUNTDOWN" value={`${countdown}s remaining`} />}
-          <DataRow label="CONFIDENCE" value={event ? `${Math.round(event.confidence * 100)}%` : '94%'} />
-          <DataRow
-            label="LOCATION"
-            value={
-              event?.latitude !== undefined && event?.latitude !== null
-                ? `${event.latitude}, ${event.longitude}`
-                : 'Location unavailable (GNSS fix pending)'
-            }
-          />
-          <DataRow label="STATUS" value={isConfirmationWindow ? 'PENDING CONFIRMATION' : alertStatus || 'ACTIVE'} />
-          <DataRow label="STORAGE" value="LOCAL SQLITE" />
+      {isConfirmationWindow ? (
+        <View style={styles.emergencyTakeoverContent}>
+          <Text style={styles.emergencyMainHeader}>POSSIBLE FALL</Text>
+          <Text style={styles.emergencySubHeader}>Are you okay?</Text>
+
+          <View style={styles.timerCircle}>
+            <Text style={styles.timerBigNumber}>{countdown}</Text>
+            <Text style={styles.timerLabel}>seconds</Text>
+          </View>
+
+          <View style={styles.emergencyActionBox}>
+            <Button label="I'M OK" variant="primary" onPress={handleCancelFall} loading={loading} style={{ height: 56 }} />
+            <Button label="CONFIRM EMERGENCY" variant="danger" onPress={handleConfirmEmergency} loading={loading} style={{ height: 56 }} />
+          </View>
         </View>
+      ) : (
+        <View style={styles.emergencyTakeoverContent}>
+          <Text style={[styles.emergencyMainHeader, { color: theme.colors.emergency }]}>FALL CONFIRMED</Text>
+          <Text style={styles.emergencySubHeader}>Emergency alert active</Text>
 
-        {isConfirmationWindow ? (
-          <View style={{ gap: 12 }}>
-            <Button label="CANCEL / I'M OK" onPress={handleCancelFall} loading={loading} />
-            <Button label="CONFIRM EMERGENCY" secondary onPress={handleConfirmEmergency} loading={loading} />
+          <View style={styles.diagBlock}>
+            <DiagnosticRow label="Time" value={event ? new Date(event.occurred_at).toLocaleTimeString() : 'Just now'} />
+            <DiagnosticRow
+              label="Location"
+              value={
+                event?.latitude !== undefined && event?.latitude !== null
+                  ? `${event.latitude}, ${event.longitude}`
+                  : 'Phone GPS Available'
+              }
+            />
+            <DiagnosticRow label="Status" value={alertStatus || 'ACTIVE'} />
           </View>
-        ) : alertStatus !== 'RESOLVED' && (
-          <View style={{ gap: 12 }}>
-            {alertStatus !== 'ACKNOWLEDGED' && (
-              <Button label="ACKNOWLEDGE ALERT" onPress={handleAcknowledge} loading={loading} />
-            )}
-            <Button label="MARK AS RESOLVED" secondary onPress={handleResolve} loading={loading} />
-          </View>
-        )}
-      </View>
-    </Shell>
+
+          {alertStatus !== 'RESOLVED' && (
+            <View style={styles.emergencyActionBox}>
+              {alertStatus !== 'ACKNOWLEDGED' && (
+                <Button label="ACKNOWLEDGE" variant="primary" onPress={handleAcknowledge} loading={loading} style={{ height: 56 }} />
+              )}
+              <Button label="RESOLVE" variant="secondary" onPress={handleResolve} loading={loading} style={{ height: 56 }} />
+            </View>
+          )}
+        </View>
+      )}
+    </Screen>
   );
 }
 
-function DataRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.dataRow}>
-      <Text style={styles.dataLabel}>{label}</Text>
-      <Text style={styles.dataValue}>{value}</Text>
-    </View>
-  );
-}
-
+// 7. HISTORY SCREEN (TIMELINE FORMAT)
 export function HistoryScreen({ navigation }: Props<'History'>) {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -536,71 +480,68 @@ export function HistoryScreen({ navigation }: Props<'History'>) {
   }, []);
 
   return (
-    <Shell eyebrow="NEX GUARD / 03 HISTORY">
-      <Pressable onPress={() => navigation.goBack()}>
-        <Text style={styles.back}>← DASHBOARD</Text>
-      </Pressable>
-      <SectionTitle index="03 / RECORD" title="Alert history" copy="Local events stored safely in device SQLite database." />
+    <Screen
+      activeTab="ALERTS"
+      onTabChange={(tab) => {
+        if (tab === 'HOME') navigation.navigate('Dashboard');
+        if (tab === 'DEVICE') navigation.navigate('DeviceHealth');
+        if (tab === 'PROFILE') navigation.navigate('Profile');
+      }}
+    >
+      <Header title="Alert History" subtitle="Incident timeline" />
+
       {loading ? (
-        <ActivityIndicator color={colors.ink} style={{ marginVertical: 24 }} />
+        <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: theme.spacing.xl }} />
       ) : alerts.length === 0 ? (
-        <Text style={styles.empty}>No local alert events recorded yet.</Text>
+        <View style={styles.emptyBox}>
+          <Text style={styles.emptyText}>No incidents recorded</Text>
+        </View>
       ) : (
-        alerts.map((item) => (
-          <View style={styles.historyItem} key={item.id}>
-            <View>
-              <Text style={styles.alertCode}>{item.fall_event?.event_type || 'FALL_DETECTED'}</Text>
-              <Text style={styles.historyTime}>
-                {new Date(item.fall_event?.occurred_at || item.created_at).toLocaleString()} · STATUS: {item.status}
-              </Text>
-            </View>
-            <Text style={styles.historyConfidence}>
-              {item.fall_event ? `${Math.round(item.fall_event.confidence * 100)}%` : '—'}
-            </Text>
-          </View>
-        ))
+        <View>
+          <Text style={styles.dateGroupHeader}>TODAY</Text>
+          {alerts.map((item) => (
+            <TimelineItem
+              key={item.id}
+              title={item.fall_event?.event_type === 'FALL_DETECTED' ? 'Fall confirmed' : 'Possible fall'}
+              time={`${new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${item.status}`}
+              status={item.status === 'RESOLVED' ? 'safe' : item.status === 'ACKNOWLEDGED' ? 'warning' : 'emergency'}
+            />
+          ))}
+        </View>
       )}
-    </Shell>
+    </Screen>
   );
 }
 
+// 8. DEVICE HEALTH SCREEN (DIAGNOSTICS FORMAT)
 export function DeviceHealthScreen({ navigation }: Props<'DeviceHealth'>) {
   const deviceId = useDeviceStore((state) => state.deviceId);
-  const [deviceInfo, setDeviceInfo] = useState<any>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    async function loadInfo() {
-      const dev = await DeviceService.getDevice(deviceId || 'nex-guard-001');
-      if (mounted) setDeviceInfo(dev);
-    }
-    void loadInfo();
-    return () => {
-      mounted = false;
-    };
-  }, [deviceId]);
 
   return (
-    <Shell eyebrow="NEX GUARD / 04 DEVICE">
-      <Pressable onPress={() => navigation.goBack()}>
-        <Text style={styles.back}>← DASHBOARD</Text>
-      </Pressable>
-      <SectionTitle index="04 / STATUS" title="Device health" copy="Local device profile and hardware verification status." />
-      <View style={styles.healthCard}>
-        <DataRow label="DEVICE ID" value={deviceId || 'nex-guard-001'} />
-        <DataRow label="OPERATIONAL MODE" value="STANDALONE LOCAL MODE" />
-        <DataRow label="DEVICE REGISTERED" value={deviceInfo ? 'YES (SQLite)' : 'YES (Local default)'} />
-        <DataRow label="SENSOR CONNECTION" value="LOCAL SIMULATION / DISCONNECTED" />
-        <DataRow label="BATTERY STATE" value="Unverified (Hardware disconnected)" />
-        <DataRow label="FASTAPI BACKEND" value="OFFLINE / NOT REQUIRED" />
-      </View>
-      <Text style={styles.healthNote}>
-        Truthful Hardware State: Mobile app operates 100% offline. Raw hardware telemetry requires physical ESP32 BLE/UART connection in Phase 7.
-      </Text>
-    </Shell>
+    <Screen
+      activeTab="DEVICE"
+      onTabChange={(tab) => {
+        if (tab === 'HOME') navigation.navigate('Dashboard');
+        if (tab === 'ALERTS') navigation.navigate('History');
+        if (tab === 'PROFILE') navigation.navigate('Profile');
+      }}
+    >
+      <Header title={deviceId || 'NEX GUARD 001'} subtitle="● Simulation mode" />
+
+      <Text style={styles.dateGroupHeader}>SENSORS</Text>
+      <DiagnosticRow label="Motion" value="Simulated" />
+      <DiagnosticRow label="Pressure" value="Simulated" />
+      <DiagnosticRow label="GPS" value="Phone GPS" />
+      <DiagnosticRow label="Battery" value="Unavailable" />
+
+      <Text style={[styles.dateGroupHeader, { marginTop: theme.spacing.xl }]}>CONNECTION</Text>
+      <DiagnosticRow label="ESP32" value="Not connected" />
+      <DiagnosticRow label="Backend" value="Local only" />
+    </Screen>
   );
 }
 
+// 9. PROFILE SCREEN (MINIMAL SETTINGS)
 export function ProfileScreen({ navigation }: Props<'Profile'>) {
   const caregiverName = useAuthStore((state) => state.caregiverName);
   const elderlyName = useAuthStore((state) => state.elderlyName);
@@ -608,23 +549,34 @@ export function ProfileScreen({ navigation }: Props<'Profile'>) {
   const signOut = useAuthStore((state) => state.signOut);
 
   return (
-    <Shell eyebrow="NEX GUARD / 05 SETTINGS">
-      <Pressable onPress={() => navigation.goBack()}>
-        <Text style={styles.back}>← DASHBOARD</Text>
-      </Pressable>
-      <SectionTitle index="05 / CAREGIVER" title="Profile & settings" copy="Local account details stored on this device." />
-      <View style={styles.profileBlock}>
-        <DataRow label="CAREGIVER" value={caregiverName || 'Caregiver'} />
-        <DataRow label="EMAIL" value={email || 'local.user@device'} />
-        <DataRow label="WATCHING OVER" value={elderlyName || 'Family member'} />
-        <DataRow label="STORAGE ENGINE" value="LOCAL SQLITE + SECURE STORE" />
-        <DataRow label="BACKEND DEPENDENCY" value="NONE (OFFLINE FIRST)" />
-      </View>
-      <Button label="SIGN OUT" secondary onPress={signOut} />
-    </Shell>
+    <Screen
+      activeTab="PROFILE"
+      onTabChange={(tab) => {
+        if (tab === 'HOME') navigation.navigate('Dashboard');
+        if (tab === 'ALERTS') navigation.navigate('History');
+        if (tab === 'DEVICE') navigation.navigate('DeviceHealth');
+      }}
+    >
+      <Header title="Profile & Settings" subtitle="Caregiver preferences" />
+
+      <DiagnosticRow label="Caregiver" value={caregiverName || 'Anshuman'} />
+      <DiagnosticRow label="Email" value={email || 'local.user@device'} />
+      <DiagnosticRow label="Care Recipient" value={elderlyName || 'Buddha 2'} />
+      <DiagnosticRow label="Storage" value="SQLite + SecureStore" />
+      <DiagnosticRow label="Mode" value="Standalone Local Mode" />
+
+      <Button
+        label="Open Scenario Lab"
+        variant="secondary"
+        onPress={() => navigation.navigate('ScenarioCenter')}
+        style={{ marginTop: theme.spacing.xl }}
+      />
+      <Button label="Sign Out" variant="ghost" onPress={signOut} style={{ marginTop: theme.spacing.sm }} />
+    </Screen>
   );
 }
 
+// 10. SCENARIO CENTER (SCENARIO LAB)
 export function ScenarioCenterScreen({ navigation }: Props<'ScenarioCenter'>) {
   const [resultText, setResultText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -635,101 +587,148 @@ export function ScenarioCenterScreen({ navigation }: Props<'ScenarioCenter'>) {
     setResultText(null);
     try {
       const res = await FallDetectionService.triggerScenario(scenario, deviceId || 'nex-guard-001');
-      setResultText(`SIMULATED RESULT: ${res.label}`);
+      setResultText(res.label);
       if (res.isFall) {
         navigation.navigate('Emergency');
       }
     } catch (e: any) {
-      setResultText(`ERROR: ${e.message}`);
+      setResultText(`Error: ${e.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Shell eyebrow="NEX GUARD / TEST CENTER">
-      <Pressable onPress={() => navigation.goBack()}>
-        <Text style={styles.back}>← DASHBOARD</Text>
-      </Pressable>
-      <SectionTitle
-        index="TEST / SCENARIOS"
-        title="Scenario simulator"
-        copy="Test application logic and state machine without physical hardware."
-      />
+    <Screen>
+      <Header title="SCENARIO LAB" subtitle="Test Nex Guard without physical hardware" onBack={() => navigation.goBack()} />
+
       {resultText && (
-        <View style={styles.diagram}>
-          <Text style={styles.diagramCode}>PIPELINE OUTPUT</Text>
-          <Text style={styles.copy}>{resultText}</Text>
+        <View style={styles.diagBlock}>
+          <Text style={styles.dateGroupHeader}>SIMULATION OUTPUT</Text>
+          <Text style={styles.simResultText}>{resultText}</Text>
         </View>
       )}
-      <View style={{ gap: 12 }}>
-        <Button label="1. SIMULATE NORMAL WALKING (1.15g)" secondary onPress={() => runTestScenario('NORMAL_WALKING')} loading={loading} />
-        <Button label="2. SIMULATE SITTING DOWN (1.02g)" secondary onPress={() => runTestScenario('SITTING')} loading={loading} />
-        <Button label="3. SIMULATE SUDDEN IMPACT FALL (3.80g)" onPress={() => runTestScenario('SUDDEN_IMPACT_FALL')} loading={loading} />
-        <Button label="4. SIMULATE WALK → FALL (3.10g)" onPress={() => runTestScenario('WALK_FALL')} loading={loading} />
-      </View>
-      <Text style={[styles.healthNote, { marginTop: 24 }]}>
-        Mode: LOCAL SIMULATION (DEFAULT). All scenarios run through the unified preprocessing & fall threshold pipeline.
-      </Text>
-    </Shell>
+
+      <Text style={styles.dateGroupHeader}>NORMAL ACTIVITY</Text>
+      <DiagnosticRow label="Simulate Walking (1.15g)" value="Run" />
+      <Button label="Run Walking Test" variant="secondary" onPress={() => runTestScenario('NORMAL_WALKING')} loading={loading} style={{ marginVertical: 6 }} />
+
+      <DiagnosticRow label="Simulate Sitting (1.02g)" value="Run" />
+      <Button label="Run Sitting Test" variant="secondary" onPress={() => runTestScenario('SITTING')} loading={loading} style={{ marginVertical: 6 }} />
+
+      <Text style={[styles.dateGroupHeader, { marginTop: theme.spacing.xl }]}>FALL EVENTS</Text>
+      <Button label="Run Impact Fall Test (3.80g)" variant="primary" onPress={() => runTestScenario('SUDDEN_IMPACT_FALL')} loading={loading} style={{ marginVertical: 6 }} />
+      <Button label="Run Walk → Fall Test (3.10g)" variant="primary" onPress={() => runTestScenario('WALK_FALL')} loading={loading} style={{ marginVertical: 6 }} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.paper },
-  content: { flexGrow: 1, padding: 26, paddingTop: 20 },
-  eyebrow: { fontSize: 11, letterSpacing: 2.5, color: colors.muted, marginBottom: 34 },
-  authSpace: { flex: 1, justifyContent: 'center', paddingVertical: 24 },
-  setupSpace: { paddingTop: 28 },
-  kicker: { fontSize: 11, letterSpacing: 2.5, color: colors.muted, marginBottom: 17 },
-  hero: { fontSize: 56, lineHeight: 58, letterSpacing: -2.8, fontWeight: '700', color: colors.ink, marginBottom: 22 },
-  dashboardTitle: { fontSize: 43, lineHeight: 45, letterSpacing: -2, fontWeight: '700', color: colors.ink },
-  copy: { fontSize: 17, lineHeight: 26, color: '#4e4a44', maxWidth: 450 },
-  errorText: { color: colors.red, fontSize: 14, marginTop: 12 },
-  form: { marginTop: 42 },
-  field: { marginBottom: 22 },
-  fieldLabel: { fontSize: 10, letterSpacing: 2, color: colors.muted, marginBottom: 8 },
-  input: { borderBottomWidth: 1, borderBottomColor: colors.ink, paddingVertical: 10, fontSize: 17, color: colors.ink },
-  button: { backgroundColor: colors.ink, paddingVertical: 17, alignItems: 'center', marginTop: 8 },
-  buttonSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.ink },
-  buttonText: { color: colors.paper, fontWeight: '700', fontSize: 11, letterSpacing: 2 },
-  buttonTextSecondary: { color: colors.ink },
-  sectionTitle: { marginBottom: 30 },
-  sectionIndex: { color: colors.blue, fontSize: 11, letterSpacing: 2.5, marginBottom: 15 },
-  heading: { fontSize: 42, lineHeight: 43, letterSpacing: -1.8, color: colors.ink, fontWeight: '700', marginBottom: 14 },
-  diagram: { borderWidth: 1, borderColor: colors.ink, padding: 22, marginBottom: 26 },
-  diagramCode: { color: colors.blue, fontSize: 10, letterSpacing: 2, marginBottom: 35 },
-  diagramTitle: { fontSize: 38, fontWeight: '700', letterSpacing: -1, color: colors.ink },
-  diagramCopy: { color: colors.muted, fontSize: 10, letterSpacing: 1.5, marginTop: 8 },
-  dashboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 30 },
-  menuDot: { letterSpacing: 3, color: colors.ink, fontSize: 16 },
-  watchCard: { backgroundColor: colors.ink, padding: 22, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  cardLabel: { color: '#aaa69e', fontSize: 10, letterSpacing: 2, marginBottom: 15 },
-  cardName: { color: colors.paper, fontSize: 27, fontWeight: '700', marginBottom: 10 },
-  cardMeta: { color: '#c8c3ba', fontSize: 10, letterSpacing: 1.5 },
-  signal: { width: 14, height: 14, borderRadius: 7, backgroundColor: colors.red },
-  signalLive: { backgroundColor: '#72ad86' },
-  metrics: { flexDirection: 'row', borderBottomWidth: 1, borderTopWidth: 1, borderColor: colors.line, marginBottom: 20 },
-  metric: { flex: 1, paddingVertical: 20 },
-  metricValue: { fontSize: 29, fontWeight: '700', color: colors.ink, marginBottom: 4 },
-  metricLabel: { fontSize: 9, letterSpacing: 1.5, color: colors.muted },
-  linkRow: { borderBottomWidth: 1, borderBottomColor: colors.line, paddingVertical: 19, flexDirection: 'row', justifyContent: 'space-between' },
-  linkLabel: { fontSize: 12, letterSpacing: 1.8, color: colors.ink, fontWeight: '700' },
-  arrow: { fontSize: 19, color: colors.blue },
-  dashboardFooter: { color: colors.muted, fontSize: 13, lineHeight: 20, marginTop: 30, fontStyle: 'italic' },
-  alertCode: { color: colors.red, fontSize: 11, letterSpacing: 2.5, marginBottom: 14 },
-  emergency: { borderTopWidth: 6, borderTopColor: colors.red, paddingTop: 24, marginTop: 30 },
-  emergencyTitle: { fontSize: 50, lineHeight: 51, letterSpacing: -2.3, fontWeight: '700', color: colors.ink, marginBottom: 20 },
-  emergencyData: { marginVertical: 30 },
-  dataRow: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 15, flexDirection: 'row', justifyContent: 'space-between' },
-  dataLabel: { fontSize: 10, letterSpacing: 1.8, color: colors.muted },
-  dataValue: { fontSize: 14, color: colors.ink, maxWidth: '62%', textAlign: 'right' },
-  back: { color: colors.blue, fontSize: 11, letterSpacing: 1.5, marginBottom: 45 },
-  empty: { fontSize: 17, color: colors.muted, paddingVertical: 24 },
-  historyItem: { borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  historyTime: { color: colors.ink, fontSize: 14 },
-  historyConfidence: { fontSize: 19, fontWeight: '700', color: colors.ink },
-  healthCard: { borderTopWidth: 1, borderTopColor: colors.ink, marginBottom: 28 },
-  healthNote: { color: colors.muted, fontSize: 14, lineHeight: 22 },
-  profileBlock: { borderTopWidth: 1, borderTopColor: colors.ink, marginBottom: 30 },
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  authHeader: {
+    marginBottom: theme.spacing.xl,
+  },
+  authBrand: {
+    ...theme.typography.eyebrow,
+    marginBottom: 4,
+  },
+  authTitle: {
+    ...theme.typography.displayStatus,
+    color: theme.colors.textPrimary,
+  },
+  authSubtitle: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.textMuted,
+    marginTop: 4,
+  },
+  formSpace: {
+    marginVertical: theme.spacing.lg,
+  },
+  authFooter: {
+    ...theme.typography.caption,
+    color: theme.colors.textSubtle,
+    textAlign: 'center',
+    marginTop: theme.spacing.lg,
+  },
+  topBar: {
+    marginBottom: theme.spacing.md,
+  },
+  greetingText: {
+    ...theme.typography.titleLarge,
+    color: theme.colors.textPrimary,
+    marginTop: 2,
+  },
+  sectionHeader: {
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+  },
+  sectionTitleText: {
+    ...theme.typography.titleMedium,
+    color: theme.colors.textPrimary,
+  },
+  timelineBox: {
+    marginBottom: theme.spacing.lg,
+  },
+  emergencyContainer: {
+    justifyContent: 'center',
+  },
+  emergencyTakeoverContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  emergencyMainHeader: {
+    ...theme.typography.displayHero,
+    color: theme.colors.primary,
+  },
+  emergencySubHeader: {
+    ...theme.typography.titleLarge,
+    color: theme.colors.textMuted,
+    marginTop: 4,
+    marginBottom: theme.spacing.xl,
+  },
+  timerCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xxl,
+  },
+  timerBigNumber: {
+    fontSize: 72,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    lineHeight: 76,
+  },
+  timerLabel: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.textMuted,
+    marginTop: 4,
+  },
+  emergencyActionBox: {
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.xl,
+  },
+  diagBlock: {
+    marginVertical: theme.spacing.lg,
+  },
+  emptyBox: {
+    paddingVertical: theme.spacing.xxl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.textMuted,
+  },
+  dateGroupHeader: {
+    ...theme.typography.eyebrow,
+    marginBottom: theme.spacing.sm,
+  },
+  simResultText: {
+    ...theme.typography.bodyLarge,
+    color: theme.colors.textPrimary,
+    marginVertical: theme.spacing.sm,
+  },
 });
