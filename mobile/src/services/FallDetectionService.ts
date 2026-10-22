@@ -1,6 +1,7 @@
 import { AlertService } from './AlertService';
 import { NotificationService } from './NotificationService';
 import { LocationService } from './LocationService';
+import { SoundService } from './SoundService';
 import { AlertWithEvent } from '../repositories/AlertRepository';
 import { SensorScenario, SimulationSensorSource, SimulatedSensorReading } from './abstractions/HardwareAbstractions';
 
@@ -139,6 +140,7 @@ export const FallDetectionService = {
   async cancelFall(): Promise<void> {
     this.clearTimer();
     this.updateState('CANCELLED', 0);
+    await SoundService.stopEmergencyAlarm();
     await NotificationService.cancelAllNotifications();
     await NotificationService.sendEmergencyNotification(
       'Nex Guard — LOCAL SIMULATION',
@@ -155,6 +157,7 @@ export const FallDetectionService = {
     this.clearTimer();
 
     this.updateState('CONFIRMED_FALL', 0);
+    void SoundService.playEmergencyAlarm();
     this.updateState('GPS_LOCATION', 0);
 
     // Attempt GPS Location

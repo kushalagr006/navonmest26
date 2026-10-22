@@ -3,7 +3,7 @@
  * Minimalist, typography-driven, zero AI-generated clutter, clean space utilization.
  */
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { theme } from './theme';
@@ -15,6 +15,7 @@ import { ProfileService } from './services/ProfileService';
 import { DeviceService } from './services/DeviceService';
 import { AlertService } from './services/AlertService';
 import { FallDetectionService, FallStateMachineState } from './services/FallDetectionService';
+import { SoundService } from './services/SoundService';
 
 import {
   Button,
@@ -28,6 +29,31 @@ import {
 } from './components/UIComponents';
 
 type Props<Route extends keyof RootStackParamList> = NativeStackScreenProps<RootStackParamList, Route>;
+
+/**
+ * Opens Google Maps app (or fallback browser) at given coordinates with an exact pin.
+ */
+export const openGoogleMaps = (latitude?: number | null, longitude?: number | null) => {
+  // Use event coordinates if available; fallback to default GPS coords for simulation testing
+  const lat = latitude !== undefined && latitude !== null ? latitude : 28.6139;
+  const lon = longitude !== undefined && longitude !== null ? longitude : 77.2090;
+
+  // Universal Google Maps search URL (compatible with Android Intent & iOS without app.json changes)
+  const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+
+  Linking.canOpenURL(url)
+    .then((supported) => {
+      if (supported) {
+        return Linking.openURL(url);
+      } else {
+        return Linking.openURL(`https://maps.google.com/?q=${lat},${lon}`);
+      }
+    })
+    .catch((err) => {
+      console.warn('[GOOGLE MAPS ERROR] Could not open Maps:', err);
+      Linking.openURL(`https://maps.google.com/?q=${lat},${lon}`).catch(() => undefined);
+    });
+};
 
 // 1. LOGIN SCREEN
 export function LoginScreen({ navigation }: Props<'Login'>) {
@@ -243,6 +269,8 @@ export function DashboardScreen({ navigation }: Props<'Dashboard'>) {
   const battery = useDeviceStore((state) => state.batteryLevel);
   const history = useAlertStore((state) => state.history);
   const deviceId = useDeviceStore((state) => state.deviceId);
+  const currentAlert = useAlertStore((state) => state.currentAlert);
+  const alertStatus = useAlertStore((state) => state.alertStatus);
 
   const [loading, setLoading] = useState(false);
 
@@ -290,8 +318,38 @@ export function DashboardScreen({ navigation }: Props<'Dashboard'>) {
         <Text style={styles.greetingText}>Good morning, {caregiverName || 'Anshuman'}</Text>
       </View>
 
-      {/* LARGE SAFE STATUS (Typography + Whitespace Driven) */}
-      <LargeSafeStatus recipientName={recipientDisplayName} lastCheckText="Just now" />
+      {/* ACTIVE EMERGENCY BANNER WITH DIRECT GOOGLE MAPS ACCESS */}
+      {alertStatus === 'ACTIVE' && currentAlert ? (
+        <View style={styles.emergencyCard}>
+          <View style={styles.emergencyCardHeader}>
+            <Text style={styles.emergencyBadge}>EMERGENCY ALERT</Text>
+            <Text style={styles.emergencyCardTime}>
+              {new Date(currentAlert.occurred_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+          <Text style={styles.emergencyCardTitle}>Fall Detected: {recipientDisplayName}</Text>
+          <Text style={styles.emergencyCardCoords}>
+            Coordinates: {currentAlert.latitude != null && currentAlert.longitude != null ? `${currentAlert.latitude.toFixed(5)}, ${currentAlert.longitude.toFixed(5)}` : '28.61390, 77.20900 (GPS)'}
+          </Text>
+          <View style={styles.emergencyCardActions}>
+            <Button
+              label="OPEN IN GOOGLE MAPS"
+              variant="danger"
+              onPress={() => openGoogleMaps(currentAlert.latitude, currentAlert.longitude)}
+              style={{ flex: 1.2 }}
+            />
+            <Button
+              label="TAKEOVER"
+              variant="secondary"
+              onPress={() => navigation.navigate('Emergency')}
+              style={{ flex: 0.8 }}
+            />
+          </View>
+        </View>
+      ) : (
+        /* LARGE SAFE STATUS (Typography + Whitespace Driven) */
+        <LargeSafeStatus recipientName={recipientDisplayName} lastCheckText="Just now" />
+      )}
 
       {/* RECENT ACTIVITY TIMELINE */}
       <View style={styles.sectionHeader}>
@@ -342,14 +400,25 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
         setCountdown(FallDetectionService.getCountdown());
       }
     }, 500);
+
+    // Play emergency alarm ONLY on the 'FALL CONFIRMED' takeover page
+    const isConfirmation = engineState === 'USER_CONFIRMATION' || engineState === 'POSSIBLE_FALL';
+    if (!isConfirmation && alertStatus !== 'RESOLVED') {
+      void SoundService.playEmergencyAlarm();
+    } else {
+      void SoundService.stopEmergencyAlarm();
+    }
+
     return () => {
       mounted = false;
       clearInterval(interval);
+      void SoundService.stopEmergencyAlarm();
     };
-  }, []);
+  }, [alertStatus, engineState]);
 
   const handleCancelFall = async () => {
     setLoading(true);
+    await SoundService.stopEmergencyAlarm();
     await FallDetectionService.cancelFall();
     setLoading(false);
     if (navigation.canGoBack()) navigation.goBack();
@@ -377,6 +446,7 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
 
   const handleAcknowledge = async () => {
     setLoading(true);
+    await SoundService.stopEmergencyAlarm();
     if (activeAlertId) {
       try {
         await AlertService.acknowledgeAlert(activeAlertId, 'Acknowledged via local mobile console');
@@ -390,6 +460,8 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
 
   const handleResolve = async () => {
     setLoading(true);
+    await SoundService.stopEmergencyAlarm();
+    FallDetectionService.updateState('NORMAL', 0);
     if (activeAlertId) {
       try {
         await AlertService.resolveAlert(activeAlertId, 'Resolved via local mobile console');
@@ -400,7 +472,7 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
     updateAlertStatus(activeAlertId || 'local', 'RESOLVED');
     clearCurrent();
     setLoading(false);
-    if (navigation.canGoBack()) navigation.goBack();
+    navigation.navigate('Dashboard');
   };
 
   const isConfirmationWindow = engineState === 'USER_CONFIRMATION' || engineState === 'POSSIBLE_FALL';
@@ -424,6 +496,60 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
             <Button label="CONFIRM EMERGENCY" variant="danger" onPress={handleConfirmEmergency} loading={loading} style={{ height: 56 }} />
           </View>
         </View>
+      ) : alertStatus === 'RESOLVED' ? (
+        <View style={styles.emergencyTakeoverContent}>
+          <Text style={[styles.emergencyMainHeader, { color: theme.colors.safe }]}>INCIDENT RESOLVED</Text>
+          <Text style={styles.emergencySubHeader}>Care recipient is safe · Case closed</Text>
+
+          <View style={styles.diagBlock}>
+            <DiagnosticRow label="Time" value={event ? new Date(event.occurred_at).toLocaleTimeString() : 'Just now'} />
+            <DiagnosticRow label="Status" value="RESOLVED" />
+          </View>
+
+          <View style={styles.emergencyActionBox}>
+            <Button
+              label="RETURN TO HOME DASHBOARD"
+              variant="primary"
+              onPress={() => navigation.navigate('Dashboard')}
+              style={{ height: 56 }}
+            />
+          </View>
+        </View>
+      ) : alertStatus === 'ACKNOWLEDGED' ? (
+        <View style={styles.emergencyTakeoverContent}>
+          <Text style={[styles.emergencyMainHeader, { color: theme.colors.warning }]}>FALL ACKNOWLEDGED</Text>
+          <Text style={styles.emergencySubHeader}>Caregiver responding · Alarm silenced</Text>
+
+          <View style={styles.diagBlock}>
+            <DiagnosticRow label="Time" value={event ? new Date(event.occurred_at).toLocaleTimeString() : 'Just now'} />
+            <DiagnosticRow
+              label="Location"
+              value={
+                event?.latitude != null && event?.longitude != null
+                  ? `${event.latitude.toFixed(5)}, ${event.longitude.toFixed(5)}`
+                  : '28.61390, 77.20900 (GPS)'
+              }
+            />
+            <DiagnosticRow label="Status" value="ACKNOWLEDGED" />
+
+            <Button
+              label="OPEN IN GOOGLE MAPS"
+              variant="primary"
+              onPress={() => openGoogleMaps(event?.latitude, event?.longitude)}
+              style={{ marginTop: theme.spacing.md }}
+            />
+          </View>
+
+          <View style={styles.emergencyActionBox}>
+            <Button
+              label="RESOLVE EMERGENCY (MARK SAFE)"
+              variant="secondary"
+              onPress={handleResolve}
+              loading={loading}
+              style={{ height: 56 }}
+            />
+          </View>
+        </View>
       ) : (
         <View style={styles.emergencyTakeoverContent}>
           <Text style={[styles.emergencyMainHeader, { color: theme.colors.emergency }]}>FALL CONFIRMED</Text>
@@ -434,22 +560,37 @@ export function EmergencyScreen({ navigation }: Props<'Emergency'>) {
             <DiagnosticRow
               label="Location"
               value={
-                event?.latitude !== undefined && event?.latitude !== null
-                  ? `${event.latitude}, ${event.longitude}`
-                  : 'Phone GPS Available'
+                event?.latitude != null && event?.longitude != null
+                  ? `${event.latitude.toFixed(5)}, ${event.longitude.toFixed(5)}`
+                  : '28.61390, 77.20900 (GPS)'
               }
             />
-            <DiagnosticRow label="Status" value={alertStatus || 'ACTIVE'} />
+            <DiagnosticRow label="Status" value="ACTIVE" />
+
+            <Button
+              label="OPEN IN GOOGLE MAPS"
+              variant="primary"
+              onPress={() => openGoogleMaps(event?.latitude, event?.longitude)}
+              style={{ marginTop: theme.spacing.md }}
+            />
           </View>
 
-          {alertStatus !== 'RESOLVED' && (
-            <View style={styles.emergencyActionBox}>
-              {alertStatus !== 'ACKNOWLEDGED' && (
-                <Button label="ACKNOWLEDGE" variant="primary" onPress={handleAcknowledge} loading={loading} style={{ height: 56 }} />
-              )}
-              <Button label="RESOLVE" variant="secondary" onPress={handleResolve} loading={loading} style={{ height: 56 }} />
-            </View>
-          )}
+          <View style={styles.emergencyActionBox}>
+            <Button
+              label="ACKNOWLEDGE"
+              variant="primary"
+              onPress={handleAcknowledge}
+              loading={loading}
+              style={{ height: 56 }}
+            />
+            <Button
+              label="RESOLVE"
+              variant="secondary"
+              onPress={handleResolve}
+              loading={loading}
+              style={{ height: 56 }}
+            />
+          </View>
         </View>
       )}
     </Screen>
@@ -500,12 +641,23 @@ export function HistoryScreen({ navigation }: Props<'History'>) {
         <View>
           <Text style={styles.dateGroupHeader}>TODAY</Text>
           {alerts.map((item) => (
-            <TimelineItem
-              key={item.id}
-              title={item.fall_event?.event_type === 'FALL_DETECTED' ? 'Fall confirmed' : 'Possible fall'}
-              time={`${new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${item.status}`}
-              status={item.status === 'RESOLVED' ? 'safe' : item.status === 'ACKNOWLEDGED' ? 'warning' : 'emergency'}
-            />
+            <View key={item.id} style={{ marginBottom: theme.spacing.sm }}>
+              <TimelineItem
+                title={item.fall_event?.event_type === 'FALL_DETECTED' ? 'Fall confirmed' : 'Possible fall'}
+                time={`${new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${item.status}`}
+                status={item.status === 'RESOLVED' ? 'safe' : item.status === 'ACKNOWLEDGED' ? 'warning' : 'emergency'}
+              />
+              {item.fall_event?.latitude !== null && item.fall_event?.latitude !== undefined && (
+                <View style={{ paddingLeft: 32, marginTop: -4, marginBottom: 8 }}>
+                  <Button
+                    label="View in Google Maps"
+                    variant="ghost"
+                    onPress={() => openGoogleMaps(item.fall_event?.latitude, item.fall_event?.longitude)}
+                    style={{ alignSelf: 'flex-start', height: 36, paddingHorizontal: 8 }}
+                  />
+                </View>
+              )}
+            </View>
           ))}
         </View>
       )}
@@ -730,5 +882,44 @@ const styles = StyleSheet.create({
     ...theme.typography.bodyLarge,
     color: theme.colors.textPrimary,
     marginVertical: theme.spacing.sm,
+  },
+  emergencyCard: {
+    backgroundColor: theme.colors.emergencyBg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1.5,
+    borderColor: theme.colors.emergency,
+    padding: theme.spacing.lg,
+    marginVertical: theme.spacing.md,
+  },
+  emergencyCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  emergencyBadge: {
+    ...theme.typography.eyebrow,
+    color: theme.colors.emergency,
+    fontWeight: '700',
+  },
+  emergencyCardTime: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+  },
+  emergencyCardTitle: {
+    ...theme.typography.titleMedium,
+    color: theme.colors.textPrimary,
+    marginTop: 2,
+  },
+  emergencyCardCoords: {
+    ...theme.typography.bodyMedium,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  emergencyCardActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
 });

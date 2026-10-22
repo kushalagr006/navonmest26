@@ -5,6 +5,7 @@ import { api } from './src/api';
 import { initDatabase } from './src/database/database';
 import { AppNavigator, navigationRef } from './src/navigation';
 import { AuthService } from './src/services/AuthService';
+import { SoundService } from './src/services/SoundService';
 import { useAlertStore, useAuthStore, useDeviceStore } from './src/store';
 
 export default function App() {
@@ -46,6 +47,7 @@ export default function App() {
         try {
           const payload = JSON.parse(message.data);
           if (payload.event_type === 'FALL_DETECTED') {
+            void SoundService.playEmergencyAlarm();
             receiveAlert(payload);
             setBatteryLevel(payload.battery_level);
             if (navigationRef.isReady()) navigationRef.navigate('Emergency');

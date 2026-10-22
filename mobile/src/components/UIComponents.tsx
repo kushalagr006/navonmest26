@@ -6,7 +6,9 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  Platform,
   SafeAreaView,
+  StatusBar,
   ScrollView,
   StyleSheet,
   Text,
@@ -302,6 +304,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: theme.colors.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0,
   },
   scrollContent: {
     flexGrow: 1,
