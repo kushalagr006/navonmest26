@@ -14,16 +14,27 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "53b54899-8a92-404a-845a-e87ff10c2ef4"
+        "projectId": "195804ad-e282-4b19-bc24-bfd47000c0f1"
       }
     },
+    "owner": "kushalagr006",
     "android": {
       "package": "com.anshuman_verma.nexguard"
     },
     "plugins": [
       "expo-font",
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-av",
+      [
+        "expo-notifications",
+        {
+          "color": "#DC2626",
+          "sounds": [
+            "./assets/emergency_alarm.mp3"
+          ]
+        }
+      ]
     ]
   }
 }

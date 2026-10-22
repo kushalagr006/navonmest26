@@ -1,6 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { NotificationService } from './src/services/NotificationService';
 import { api } from './src/api';
 import { initDatabase } from './src/database/database';
 import { AppNavigator, navigationRef } from './src/navigation';
@@ -67,8 +69,37 @@ export default function App() {
       }
     }).catch(() => undefined);
 
+    // Setup push notification categories & register token with backend
+    void NotificationService.setupNotificationCategories();
+    void NotificationService.getExpoPushToken().then((token) => {
+      if (token && mounted) {
+        void api.registerPushToken(token);
+      }
+    });
+
+    // Handle interactive notification actions (Open Maps / Acknowledge / Tap)
+    const notificationResponseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const actionIdentifier = response.actionIdentifier;
+      const data = response.notification.request.content.data as any;
+
+      if (actionIdentifier === 'OPEN_MAPS') {
+        const lat = data?.latitude ?? 28.6139;
+        const lon = data?.longitude ?? 77.2090;
+        const mapUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+        Linking.openURL(mapUrl).catch(() => undefined);
+      } else if (actionIdentifier === 'ACKNOWLEDGE') {
+        void SoundService.stopEmergencyAlarm();
+        useAlertStore.getState().updateAlertStatus('local', 'ACKNOWLEDGED');
+      } else {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate('Emergency');
+        }
+      }
+    });
+
     return () => {
       mounted = false;
+      notificationResponseSub.remove();
       if (connection) {
         try { connection.close(); } catch {}
       }

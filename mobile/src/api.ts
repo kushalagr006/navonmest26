@@ -97,5 +97,14 @@ export const api = {
       body: JSON.stringify({ notes }),
     }),
 
+  registerPushToken: (token: string, deviceId = 'nex-guard-001') =>
+    request<{ status: string }>('/api/v1/users/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ push_token: token, device_id: deviceId }),
+    }).catch((err) => {
+      console.warn('[API] Could not register push token with backend:', err.message);
+      return { status: 'offline' };
+    }),
+
   socketUrl,
 };

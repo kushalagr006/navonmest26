@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
+import urllib.request
 from contextlib import asynccontextmanager
+from pydantic import BaseModel
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
@@ -146,6 +149,55 @@ app.dependency_overrides[get_current_user] = lambda token=Depends(get_current_us
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "nex-guard-api"}
 
+
+# Push notification token registry and dispatcher
+active_push_tokens: set[str] = set()
+
+class PushTokenRequest(BaseModel):
+    push_token: str
+    device_id: str | None = None
+
+@app.post("/api/v1/users/push-token")
+async def register_push_token(payload: PushTokenRequest):
+    if payload.push_token:
+        active_push_tokens.add(payload.push_token)
+    return {"status": "ok", "active_tokens_count": len(active_push_tokens)}
+
+async def send_expo_push_alert(tokens: set[str], event: FallEvent) -> None:
+    if not tokens:
+        return
+    messages = []
+    lat = event.latitude if event.latitude is not None else 28.6139
+    lon = event.longitude if event.longitude is not None else 77.2090
+    for token in tokens:
+        messages.append({
+            "to": token,
+            "sound": "emergency_alarm.mp3",
+            "title": "🚨 EMERGENCY: Fall Detected!",
+            "body": f"Fall confirmed for Buddha 2 at {lat:.5f}, {lon:.5f}. Tap to open.",
+            "priority": "high",
+            "channelId": "emergency-alarm",
+            "categoryId": "emergency-actions",
+            "data": {
+                "latitude": lat,
+                "longitude": lon,
+                "event_id": str(event.id),
+            },
+        })
+    try:
+        req = urllib.request.Request(
+            "https://exp.host/--/api/v2/push/send",
+            data=json.dumps(messages).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip, deflate",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            pass
+    except Exception as e:
+        print(f"[EXPO PUSH WARNING] Could not dispatch push notification: {e}")
 
 # Authentication endpoints
 @app.post("/api/v1/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -321,6 +373,13 @@ async def create_fall_event(payload: FallEventCreate, session: AsyncSession = De
 
     # Broadcast WebSocket alert
     await manager.broadcast(serialized)
+
+    # Dispatch Cloud Push Notification to caregiver phones
+    try:
+        await send_expo_push_alert(active_push_tokens, event)
+    except Exception as e:
+        print(f"[PUSH ERROR] Failed to send push alert: {e}")
+
     return FallEventResponse.model_validate(serialized)
 
 

@@ -1,15 +1,17 @@
+import { Audio } from 'expo-av';
 import { Platform, Vibration } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
+let soundInstance: Audio.Sound | null = null;
 let isAlarmActive = false;
 
-// Create high-priority Android Notification Channel for Emergency Siren
+// Initialize high-priority emergency alarm notification channel on Android
 if (Platform.OS === 'android') {
-  Notifications.setNotificationChannelAsync('emergency-siren', {
-    name: 'Emergency Alarm Siren',
+  Notifications.setNotificationChannelAsync('emergency-alarm', {
+    name: 'Nex Guard Emergency Alarm',
     importance: Notifications.AndroidImportance.MAX,
+    sound: 'emergency_alarm.mp3',
     vibrationPattern: [0, 600, 300, 600, 300],
-    sound: 'default',
     enableLights: true,
     lightColor: '#DC2626',
     bypassDnd: true,
@@ -22,9 +24,7 @@ if (Platform.OS === 'android') {
 
 export const SoundService = {
   /**
-   * Play the emergency alarm siren using Android's native high-decibel Alarm channel
-   * and physical continuous emergency vibration pattern.
-   * Completely native-compatible with your existing APK build (0 crashes, 0 app.json changes).
+   * Play the emergency alarm MP3 through the device speakers at max volume.
    */
   async playEmergencyAlarm(): Promise<void> {
     if (isAlarmActive) return;
@@ -34,41 +34,63 @@ export const SoundService = {
     try {
       Vibration.vibrate([0, 600, 300, 600, 300], true);
     } catch (e) {
-      console.warn('[SOUND SERVICE] Vibration warning:', e);
+      console.warn('[SOUND SERVICE] Vibration error:', e);
     }
 
-    // 2. Play high-decibel Alarm Siren sound via native Notification Alarm channel
+    // 2. Play the actual emergency alarm MP3 via Expo AV
     try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🚨 EMERGENCY ALERT — FALL DETECTED',
-          body: 'High-priority emergency takeover active on your device.',
-          sound: 'default',
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          ...({ channelId: 'emergency-siren' } as any),
-        },
-        trigger: null,
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
       });
-    } catch (err) {
-      console.warn('[SOUND SERVICE] Emergency siren notification warning:', err);
+
+      if (soundInstance) {
+        try {
+          await soundInstance.stopAsync();
+          await soundInstance.unloadAsync();
+        } catch {}
+        soundInstance = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/emergency_alarm.mp3'),
+        {
+          shouldPlay: true,
+          isLooping: true,
+          volume: 1.0,
+        }
+      );
+
+      soundInstance = sound;
+      await sound.playAsync();
+    } catch (error) {
+      console.warn('[SOUND SERVICE] Audio playback error:', error);
     }
   },
 
   /**
-   * Stop the emergency alarm and vibration.
+   * Stop the emergency alarm sound and vibration.
    */
   async stopEmergencyAlarm(): Promise<void> {
     isAlarmActive = false;
 
-    // Cancel vibration
+    // Stop vibration
     try {
       Vibration.cancel();
     } catch {}
 
-    // Dismiss alarm notification
-    try {
-      await Notifications.dismissAllNotificationsAsync();
-    } catch {}
+    // Stop and unload sound
+    if (soundInstance) {
+      try {
+        await soundInstance.stopAsync();
+        await soundInstance.unloadAsync();
+      } catch (error) {
+        console.warn('[SOUND SERVICE] Error stopping audio:', error);
+      } finally {
+        soundInstance = null;
+      }
+    }
   },
 
   isPlaying(): boolean {
